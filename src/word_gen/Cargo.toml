@@ -1,0 +1,12 @@
+[package]
+name = "word_gen"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "4.5.20"
+rand = "0.8.5"
+serde = "1.0"
+serde_yaml = "0.9"
