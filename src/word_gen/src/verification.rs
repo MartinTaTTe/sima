@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
 
-pub fn verify_rules(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<(), String> {
+// Verifies the BTreeMap read from the yaml file to ensure it is valid and contains necessary information.
+pub fn verify_rules(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<(), &str> {
     // Verify the alphabet is defined properly.
     let mut alphabet: String = match rules.get("alphabet") {
         Some(v) => {
             match v.first_key_value() {
-                Some((k, _v)) => if k.len() < 1 { return Err(format!("Alphabet is too small.")) } else { k.to_owned() },
-                None => return Err(format!("No alphabet in alphabet.")),
+                Some((k, _)) => if k.len() < 2 { return Err("Alphabet is too small.") } else { k.to_owned() },
+                None => return Err("No alphabet in alphabet."),
             }
         }
-        None => return Err(format!("No alphabet in rules.")),
+        None => return Err("No alphabet in rules."),
     };
     alphabet.push('_');
     alphabet.push(' ');
@@ -18,22 +19,22 @@ pub fn verify_rules(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<(
     match rules.get("word_length") {
         Some(v) => {
             let min = match v.get("min") {
-                Some(v) => if *v == 0 { return Err(format!("Min can't be 0.")) } else { v },
-                None => return Err(format!("No min in word_length.")),
+                Some(v) => if *v == 0 { return Err("Min can't be 0.") } else { v },
+                None => return Err("No min in word_length."),
             };
             let max = match v.get("max") {
-                Some(v) => if *v < *min { return Err(format!("Max can't be less than min.")) } else { v },
-                None => return Err(format!("No max in word_length.")),
+                Some(v) => if *v < *min { return Err("Max can't be less than min.") } else { v },
+                None => return Err("No max in word_length."),
             };
             match v.get("avg") {
-                Some(v) => if *v < *min || *v > *max { return Err(format!("Avg can't be less than min or more than max.")) },
-                None => return Err(format!("No avg in word_length.")),
+                Some(v) => if *v < *min || *v > *max { return Err("Avg can't be less than min or more than max.") },
+                None => return Err("No avg in word_length."),
             }
         }
-        None => return Err(format!("No word_length in rules."))
+        None => return Err("No word_length in rules.")
     }
 
-    // Verify every letter rule is defined properly.
+    // Verify every letter rule is defined using only characters in the alphabet.
     for (k, v) in rules {
         if k == "alphabet" || k == "word_length" {
             continue
@@ -41,25 +42,19 @@ pub fn verify_rules(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<(
 
         in_alphabet(&k, &alphabet)?;
 
-        for (k, _v) in v {
+        for (k, _) in v {
             in_alphabet(&k, &alphabet)?;
         }
     }
     Ok(())
 }
 
-fn in_alphabet(pattern: &String, alphabet: &String) -> Result<(), String> {
+// Helper function to verify that each character in pattern exists in alphabet.
+fn in_alphabet<'a, 'b>(pattern: &'a str, alphabet: &'a str) -> Result<(), &'b str> {
     for l in pattern.chars() {
         if !alphabet.contains(l) {
-            return Err(format!("{} not in alphabet, from pattern {}", l, pattern))
+            return Err("Character not in alphabet used.")
         }
     }
     Ok(())
 }
-
-// Add rules to prevent:
-// alphabet: a
-// a:
-//    a: 0
-//    _: 1
-// Each pattern must contain " ":
