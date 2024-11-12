@@ -19,3 +19,4 @@ Cargo.lock
 /src/**/**/*.rs.bk
 
 ### Project specific ignores ###
+/src/word_gen/assets/local/
