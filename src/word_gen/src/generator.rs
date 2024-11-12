@@ -101,8 +101,9 @@ impl Language {
         let mut candidates: Vec<(f32, String)> = vec![];
         let mut current: String = String::from("");
         let mut word: String = String::new();
+        let mut l = 0;
 
-        for _ in 0..self.max {
+        while l < self.max {
             for i in (0..3).rev() {
                 // Find the pattern to match against.
                 let pattern: String = if current == "" {
@@ -149,6 +150,8 @@ impl Language {
                             value += terminate as f32 / 5.0;
                             candidates.push((value, current.clone()));
                         }
+
+                        l += continuation.len() as u32;
 
                         break
                     },
