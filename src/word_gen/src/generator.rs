@@ -56,15 +56,36 @@ impl Language {
         let mut patterns: BTreeMap<String, (u32, BTreeMap<u32, String>)> = BTreeMap::new();
 
         for (p, m) in &rules {
+            // Cumulative weight used by rng.
             let mut sum: u32 = 0;
+
+            // Continuation map for this pattern.
             let mut map: BTreeMap<u32, String> = BTreeMap::new();
+
+            // Continuations with weight 0.
+            let mut forbidden= Vec::new();
 
             // Invert the inner BTreeMap so it can be used with weighted randomness.
             for (k, v) in m {
                 sum += v;
-                if !map.contains_key(&sum) { map.insert(sum, k.to_owned()); }
+                if map.contains_key(&sum) {
+                    forbidden.push(k.to_owned());
+                }
+                else {
+                    map.insert(sum, k.to_owned());
+                }
             }
-            patterns.insert(p.to_owned(), (sum, map));
+
+            // Key of last valid continuation.
+            let last = sum;
+
+            // Insert forbidden continuations after the last valid continuation.
+            for f in &forbidden {
+                sum += 1;
+                map.insert(sum, f.to_owned());
+            }
+
+            patterns.insert(p.to_owned(), (last, map));
         }
 
         Some(Self {
@@ -156,7 +177,7 @@ impl Language {
             candidate = string.replace("_", &self.get_wildcard().to_string());
             found = true;
             for (_, v) in map {
-                if candidate == *v { found = false }
+                if candidate == *v { found = false; }
             }
         }
         candidate

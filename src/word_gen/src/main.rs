@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let yaml = File::open(path)?;
     let rules: BTreeMap<String, BTreeMap<String, u32>> = serde_yaml::from_reader(yaml)?;
 
-    // Verify and generate word(s).
+    // Print out 10 words.
     println!("{}", word_gen::generator::generate_words(10, &rules)?);
 
     Ok(())
