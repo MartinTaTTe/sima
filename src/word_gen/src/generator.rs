@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use rand::Rng;
+use rand::{rngs::StdRng, RngCore};
 
 use crate::verification;
 
 // Generates amount number of words using rules.
-pub fn generate_words(amount: u32, rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<String, &str> {
+pub fn generate_words<'a>(rng: &mut StdRng, amount: u32, rules: &'a BTreeMap<String, BTreeMap<String, u32>>) -> Result<String, &'a str> {
     // Verify the rules are valid.
     verification::verify_rules(&rules)?;
 
@@ -15,13 +15,15 @@ pub fn generate_words(amount: u32, rules: &BTreeMap<String, BTreeMap<String, u32
 
     // Generate each word individually.
     for _ in 0..amount {
-        let word = language.generate_word()?;
+        let word = language.generate_word(rng)?;
         result.push_str(&word);
         result.push_str(" ");
     }
 
     Ok(result.trim().to_owned())
 }
+
+
 
 // The language object stores the rules specified in the language rules file.
 struct Language {
@@ -97,7 +99,7 @@ impl Language {
         })
     }
 
-    fn generate_word<'a>(&self) -> Result<String, &'a str> {
+    fn generate_word<'a>(&self, rng: &mut StdRng) -> Result<String, &'a str> {
         let mut candidates: Vec<(f32, String)> = vec![];
         let mut current: String = String::from("");
         let mut word: String = String::new();
@@ -126,10 +128,10 @@ impl Language {
 
                         // Get a random continuation, excluding word termination.
                         let start: u32 = terminate + 1;
-                        let rng = rand::thread_rng().gen_range(start..=map.0);
-                        let cont = map.1.range(&rng..).next().unwrap().1;
+                        let r = rng.next_u32() % (map.0 - start) + start;
+                        let cont = map.1.range(&r..).next().unwrap().1;
                         let continuation = if cont.contains("_") {
-                            self.replace_wildcards(&cont, &map.1)
+                            (&self.replace_wildcards(rng, &cont, &map.1)).to_owned()
                         }
                         else {
                             cont.to_owned()
@@ -173,11 +175,11 @@ impl Language {
     }
 
     // Replace all wildcard characters (_) in string.
-    fn replace_wildcards(&self, string: &String, map: &BTreeMap<u32, String>) -> String {
+    fn replace_wildcards(&self, rng: &mut StdRng, string: &String, map: &BTreeMap<u32, String>) -> String {
         let mut candidate: String = String::new();
         let mut found = false;
         while !found {
-            candidate = string.replace("_", &self.get_wildcard().to_string());
+            candidate = string.replace("_", &self.get_wildcard(rng).to_string());
             found = true;
             for (_, v) in map {
                 if candidate == *v { found = false; }
@@ -187,9 +189,9 @@ impl Language {
     }
 
     // Get a random character that is not represented by the existing rules of a pattern.
-    fn get_wildcard(&self) -> char {
-        let rng = rand::thread_rng().gen_range(0..self.alphabet.len());
-        self.alphabet.chars().nth(rng).unwrap()
+    fn get_wildcard(&self, rng: &mut StdRng) -> char {
+        let i = rng.next_u32() as usize % self.alphabet.len();
+        self.alphabet.chars().nth(i).unwrap()
     }
 }
 
