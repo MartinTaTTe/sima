@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{btree_map, BTreeMap};
 
 use rand::{rngs::StdRng, RngCore};
 
@@ -7,23 +7,21 @@ use crate::verification;
 // Generates amount number of words using rules.
 pub fn generate_words<'a>(rng: &mut StdRng, amount: u32, rules: &'a BTreeMap<String, BTreeMap<String, u32>>) -> Result<String, &'a str> {
     // Verify the rules are valid.
-    verification::verify_rules(&rules)?;
+    verification::verify_rules(rules)?;
 
     // Setup the language.
-    let language = Language::new(&rules);
+    let language = Language::new(rules);
     let mut result = String::from("");
 
     // Generate each word individually.
     for _ in 0..amount {
         let word = language.generate_word(rng)?;
         result.push_str(&word);
-        result.push_str(" ");
+        result.push(' ');
     }
 
     Ok(result.trim().to_owned())
 }
-
-
 
 // The language object stores the rules specified in the language rules file.
 struct Language {
@@ -36,7 +34,7 @@ struct Language {
 
 impl Language {
     fn new(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Self {
-        match Self::build_language(&rules) {
+        match Self::build_language(rules) {
             Some(s) => s,
             None => panic!("Failed to build language!"),
         }
@@ -70,11 +68,10 @@ impl Language {
             // Invert the inner BTreeMap so it can be used with weighted randomness.
             for (k, v) in m {
                 sum += v;
-                if map.contains_key(&sum) {
+                if let btree_map::Entry::Vacant(e) = map.entry(sum) {
+                    e.insert(k.to_owned());
+                } else {
                     forbidden.push(k.to_owned());
-                }
-                else {
-                    map.insert(sum, k.to_owned());
                 }
             }
 
@@ -91,11 +88,11 @@ impl Language {
         }
 
         Some(Self {
-            alphabet: alphabet,
-            min: min,
-            avg: avg,
-            max: max,
-            patterns: patterns,
+            alphabet,
+            min,
+            avg,
+            max,
+            patterns,
         })
     }
 
@@ -108,8 +105,8 @@ impl Language {
         while l < self.max {
             for i in (0..3).rev() {
                 // Find the pattern to match against.
-                let pattern: String = if current == "" {
-                    format!(" ")
+                let pattern: String = if current.is_empty() {
+                    " ".to_owned()
                 }
                 else {
                     // Get the i last characters of current.
@@ -130,8 +127,8 @@ impl Language {
                         let start: u32 = terminate + 1;
                         let r = rng.next_u32() % (map.0 - start) + start;
                         let cont = map.1.range(&r..).next().unwrap().1;
-                        let continuation = if cont.contains("_") {
-                            (&self.replace_wildcards(rng, &cont, &map.1)).to_owned()
+                        let continuation = if cont.contains('_') {
+                            self.replace_wildcards(rng, cont, &map.1).to_owned()
                         }
                         else {
                             cont.to_owned()
@@ -175,13 +172,13 @@ impl Language {
     }
 
     // Replace all wildcard characters (_) in string.
-    fn replace_wildcards(&self, rng: &mut StdRng, string: &String, map: &BTreeMap<u32, String>) -> String {
+    fn replace_wildcards(&self, rng: &mut StdRng, string: &str, map: &BTreeMap<u32, String>) -> String {
         let mut candidate: String = String::new();
         let mut found = false;
         while !found {
-            candidate = string.replace("_", &self.get_wildcard(rng).to_string());
+            candidate = string.replace('_', &self.get_wildcard(rng).to_string());
             found = true;
-            for (_, v) in map {
+            for v in map.values() {
                 if candidate == *v { found = false; }
             }
         }

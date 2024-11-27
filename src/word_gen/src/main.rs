@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::fs::File;
 
 use rand::{rngs::StdRng, SeedableRng};
-use serde_yaml;
 
 use word_gen::{command, generator};
 

@@ -40,10 +40,10 @@ pub fn verify_rules(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Result<(
             continue
         }
 
-        in_alphabet(&k, &alphabet)?;
+        in_alphabet(k, &alphabet)?;
 
-        for (k, _) in v {
-            in_alphabet(&k, &alphabet)?;
+        for k in v.keys() {
+            in_alphabet(k, &alphabet)?;
         }
     }
     Ok(())
