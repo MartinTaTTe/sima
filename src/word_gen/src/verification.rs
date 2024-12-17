@@ -58,3 +58,26 @@ fn in_alphabet<'a, 'b>(pattern: &'a str, alphabet: &'a str) -> Result<(), &'b st
     }
     Ok(())
 }
+
+//TESTS BEGIN
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_alphabet_correct_values() {
+        let alphabet = "abc";
+        let error = Err("Character not in alphabet used.");
+
+        // Patterns in alphabet.
+        assert_eq!(in_alphabet("aaa", alphabet), Ok(()));
+        assert_eq!(in_alphabet("abc", alphabet), Ok(()));
+        assert_eq!(in_alphabet("cba", alphabet), Ok(()));
+
+        // Patterns not in alphabet.
+        assert_eq!(in_alphabet("d", alphabet), error);
+        assert_eq!(in_alphabet("ad", alphabet), error);
+        assert_eq!(in_alphabet("da", alphabet), error);
+    }
+}
+// TESTS END

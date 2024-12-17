@@ -201,3 +201,109 @@ fn inverse_lerp(left: u32, right: u32, point: u32) -> f32 {
     if right == left { return 1.0 }
     (point - left) as f32 / (right - left) as f32
 }
+
+// TESTS BEGIN
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::collections::BTreeMap;
+    use std::fs::File;
+
+    use rand::{rngs::StdRng, SeedableRng};
+
+    fn get_language() -> Language {
+        // Read and deserialize yaml file.
+        let yaml = File::open("./assets/testing/test1.yaml").expect("YAML file not found.");
+        let rules: BTreeMap<String, BTreeMap<String, u32>> = serde_yaml::from_reader(yaml).expect("YAML file wrong format.");
+
+        Language::new(&rules)
+    }
+
+    #[test]
+    fn generate_word_follows_rules() {
+        let language = get_language();
+        let mut rng = StdRng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let word = language.generate_word(&mut rng).expect("Failed to return word.");
+            if word.contains("aa") || word.contains("bbb") || word.contains("cc") {
+                panic!("Word contained impossible pattern.")
+            }
+            if word.len() < language.min as usize {
+                panic!("Word impossibly short.")
+            }
+            if word.len() > language.max as usize {
+                panic!("Word impossibly long.")
+            }
+        }
+
+    }
+
+    #[test]
+    fn replace_wildcards_does_not_replace_with_weight_0() {
+        let language = get_language();
+        let mut rng = StdRng::seed_from_u64(0);
+
+        // Ensure a is never returned since it has weight 0.
+        let map = &language.patterns.get("a").expect("YAML file missing pattern.").1;
+        for _ in 0..100 {
+            let result = language.replace_wildcards(&mut rng, "_", map);
+            let result = result.as_str();
+            match result {
+                "a" => panic!("Impossible character returned."),
+                _ => (),
+            }
+        }
+    }
+
+    #[test]
+    fn get_wildcard_returns_all_possibilities() {
+        let language = get_language();
+        let mut rng = StdRng::seed_from_u64(0);
+
+        let mut a = false;
+        let mut b = false;
+        let mut c = false;
+
+        // Ensure each of a, b, c are getting returned.
+        for _ in 0..100 {
+            let result = language.get_wildcard(&mut rng);
+            match result {
+                'a' => a = true,
+                'b' => b = true,
+                'c' => c = true,
+                _ => panic!("Impossible character returned."),
+            }
+        }
+        assert!(a && b && c);
+    }
+
+    #[test]
+    fn inverse_lerp_correct_values() {
+        assert_eq!(inverse_lerp(0, 1, 0), 0.0);
+        assert_eq!(inverse_lerp(0, 1, 1), 1.0);
+        assert_eq!(inverse_lerp(0, 5, 3), 0.6);
+        assert_eq!(inverse_lerp(5, 10, 7), 0.4);
+        assert_eq!(inverse_lerp(4, 7, 6), 0.66666666);
+    }
+
+    #[test]
+    #[should_panic]
+    fn inverse_lerp_point_greater_than_right() {
+        inverse_lerp(0, 1, 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn inverse_lerp_point_less_than_left() {
+        inverse_lerp(1, 2, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn inverse_lerp_left_greater_than_right() {
+        inverse_lerp(1, 0, 0);
+    }
+}
+// TESTS END
