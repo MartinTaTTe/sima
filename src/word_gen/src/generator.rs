@@ -123,15 +123,26 @@ impl Language {
                             if *v == " " { terminate = *k }
                         }
 
-                        // Get a random continuation, excluding word termination.
-                        let start: u32 = terminate + 1;
-                        let r = rng.next_u32() % (map.0 - start) + start;
-                        let cont = map.1.range(&r..).next().unwrap().1;
-                        let continuation = if cont.contains('_') {
-                            self.replace_wildcards(rng, cont, &map.1).to_owned()
+                        // Get the start position of continuations, excluding word termination.
+                        let start = terminate + 1;
+
+                        // If the only continuation is termination, add that and stop generating word candidates.
+                        if start > map.0 {
+                            candidates.push((1.0, current.clone()));
+                            l = self.max;
+                            break
+                        }
+
+                        // Get a random continuation. If there's only one option, choose that, else, pick one at random.
+                        let r = if map.0 == start { start } else { rng.next_u32() % (map.0 - start) + start };
+
+                        // Replace potential wildcards in the continuation.
+                        let raw_continuation = map.1.range(&r..).next().unwrap().1;
+                        let continuation = if raw_continuation.contains('_') {
+                            self.replace_wildcards(rng, raw_continuation, &map.1).to_owned()
                         }
                         else {
-                            cont.to_owned()
+                            raw_continuation.to_owned()
                         };
 
                         current.push_str(&continuation);
