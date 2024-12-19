@@ -29,7 +29,7 @@ struct Language {
     min: u32,
     avg: u32,
     max: u32,
-    patterns: BTreeMap<String, (u32, BTreeMap<u32, String>)>,
+    patterns: BTreeMap<String, (u32, f32, BTreeMap<u32, String>)>,
 }
 
 impl Language {
@@ -53,7 +53,7 @@ impl Language {
         let max: u32 = *limits.get("max")?;
 
         // Create the patterns map based on the rules.
-        let mut patterns: BTreeMap<String, (u32, BTreeMap<u32, String>)> = BTreeMap::new();
+        let mut patterns: BTreeMap<String, (u32, f32, BTreeMap<u32, String>)> = BTreeMap::new();
 
         for (p, m) in &rules {
             // Cumulative weight used by rng.
@@ -65,6 +65,9 @@ impl Language {
             // Continuations with weight 0.
             let mut forbidden= Vec::new();
 
+            // Termination weight.
+            let mut termination_weight: u32 = 0;
+
             // Invert the inner BTreeMap so it can be used with weighted randomness.
             for (k, v) in m {
                 sum += v;
@@ -73,10 +76,17 @@ impl Language {
                 } else {
                     forbidden.push(k.to_owned());
                 }
+
+                if k == " " {
+                    termination_weight = *v;
+                }
             }
 
             // Key of last valid continuation.
             let last = sum;
+
+            // Calculate the chance the word should end with this pattern.
+            let termination = termination_weight as f32 / sum as f32;
 
             // Insert forbidden continuations after the last valid continuation.
             for f in &forbidden {
@@ -84,7 +94,7 @@ impl Language {
                 map.insert(sum, f.to_owned());
             }
 
-            patterns.insert(p.to_owned(), (last, map));
+            patterns.insert(p.to_owned(), (last, termination, map));
         }
 
         Some(Self {
@@ -119,7 +129,7 @@ impl Language {
                     Some(map) => {
                         // Get the weighted probability of the word to end on curent pattern.
                         let mut terminate: u32 = 0;
-                        if let Some((k, v)) = map.1.first_key_value() {
+                        if let Some((k, v)) = map.2.first_key_value() {
                             if *v == " " { terminate = *k }
                         }
 
@@ -137,9 +147,9 @@ impl Language {
                         let r = if map.0 == start { start } else { rng.next_u32() % (map.0 - start) + start };
 
                         // Replace potential wildcards in the continuation.
-                        let raw_continuation = map.1.range(&r..).next().unwrap().1;
+                        let raw_continuation = map.2.range(&r..).next().unwrap().1;
                         let continuation = if raw_continuation.contains('_') {
-                            self.replace_wildcards(rng, raw_continuation, &map.1).to_owned()
+                            self.replace_wildcards(rng, raw_continuation, &map.2).to_owned()
                         }
                         else {
                             raw_continuation.to_owned()
@@ -150,14 +160,13 @@ impl Language {
                         // If the length of the current word is acceptable, add it as a candidate with relative value.
                         let len: u32 = current.len() as u32;
                         if len >= self.min && len <= self.max {
-                            let mut value = if len < self.avg {
+                            // Calculate the value for the candidate based on its distance from avg and the likelihood the word should end with current pattern.
+                            let value = if len < self.avg {
                                 inverse_lerp(self.min, self.avg, len)
                             }
                             else {
                                 1.0 - inverse_lerp(self.avg, self.max, len)
-                            };
-                            // Calculate the relative value based on distance from avg length and weighted probability of the word to end * 5.
-                            value += terminate as f32 / 5.0;
+                            } + map.1;
                             candidates.push((value, current.clone()));
                         }
 
@@ -257,7 +266,7 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(0);
 
         // Ensure a is never returned since it has weight 0.
-        let map = &language.patterns.get("a").expect("YAML file missing pattern.").1;
+        let map = &language.patterns.get("a").expect("YAML file missing pattern.").2;
         for _ in 0..100 {
             let result = language.replace_wildcards(&mut rng, "_", map);
             let result = result.as_str();
