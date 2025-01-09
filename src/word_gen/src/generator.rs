@@ -44,7 +44,7 @@ impl Language {
     fn build_language(rules: &BTreeMap<String, BTreeMap<String, u32>>) -> Option<Self> {
         // Create a new copy of rules without the alphabet and word length limits.
         let mut rules = rules.clone();
-        let alphabet: String = rules.remove("alphabet")?.first_key_value()?.0.to_owned();
+        let alphabet = rules.remove("alphabet")?.first_key_value()?.0.to_owned();
         let limits: BTreeMap<String, u32> = rules.remove("word_length")?;
 
         // Get the word length limits.
@@ -108,22 +108,15 @@ impl Language {
 
     fn generate_word<'a>(&self, rng: &mut StdRng) -> Result<String, &'a str> {
         let mut candidates: Vec<(f32, String)> = vec![];
-        let mut current: String = String::from("");
-        let mut word: String = String::new();
+        let mut current: String = String::from(" ");
         let mut l = 0;
 
         while l < self.max {
             for i in (0..3).rev() {
-                // Find the pattern to match against.
-                let pattern: String = if current.is_empty() {
-                    " ".to_owned()
-                }
-                else {
-                    // Get the i last characters of current.
-                    let split_pos = current.char_indices().nth_back(i).unwrap_or((current.len(), ' ')).0;
-                    if split_pos == current.len() { continue }
-                    current[split_pos..].to_owned()
-                };
+                // Find the pattern to match against, from (at most) the i last characters of current.
+                let split_pos = current.char_indices().nth_back(i).unwrap_or((current.len(), ' ')).0;
+                if split_pos == current.len() { continue }
+                let pattern = current[split_pos..].to_owned();
 
                 match self.patterns.get(&pattern) {
                     Some(map) => {
@@ -180,20 +173,16 @@ impl Language {
         }
 
         // Get the candidate with the highest value.
-        if !candidates.is_empty() {
-            candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-            word = match candidates.first() {
-                Some(word) => word.1.clone(),
-                None => return Err("No word found."),
-            }
+        candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        match candidates.first() {
+            Some(word) => Ok(word.1.trim().to_owned()),
+            None => Err("No word found."),
         }
-
-        Ok(word)
     }
 
     // Replace all wildcard characters (_) in string.
     fn replace_wildcards(&self, rng: &mut StdRng, string: &str, map: &BTreeMap<u32, String>) -> String {
-        let mut candidate: String = String::new();
+        let mut candidate = String::from("");
         let mut found = false;
         while !found {
             candidate = string.replace('_', &self.get_wildcard(rng).to_string());
