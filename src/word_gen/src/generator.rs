@@ -26,9 +26,9 @@ pub fn generate_words<'a>(rng: &mut StdRng, amount: u32, rules: &'a BTreeMap<Str
 // The language object stores the rules specified in the language rules file.
 struct Language {
     alphabet: String,
-    min: u32,
-    avg: u32,
-    max: u32,
+    min: usize,
+    avg: usize,
+    max: usize,
     patterns: BTreeMap<String, (u32, f32, BTreeMap<u32, String>)>,
 }
 
@@ -48,9 +48,9 @@ impl Language {
         let limits: BTreeMap<String, u32> = rules.remove("word_length")?;
 
         // Get the word length limits.
-        let min: u32 = *limits.get("min")?;
-        let avg: u32 = *limits.get("avg")?;
-        let max: u32 = *limits.get("max")?;
+        let min = *limits.get("min")? as usize;
+        let avg = *limits.get("avg")? as usize;
+        let max = *limits.get("max")? as usize;
 
         // Create the patterns map based on the rules.
         let mut patterns: BTreeMap<String, (u32, f32, BTreeMap<u32, String>)> = BTreeMap::new();
@@ -158,7 +158,7 @@ impl Language {
                         current.push_str(&continuation);
 
                         // If the length of the current word is acceptable, add it as a candidate with relative value.
-                        let len: u32 = current.len() as u32;
+                        let len = current.len();
                         if len >= self.min && len <= self.max {
                             // Calculate the value for the candidate based on its distance from avg and the likelihood the word should end with current pattern.
                             let value = if len < self.avg {
@@ -170,7 +170,7 @@ impl Language {
                             candidates.push((value, current.clone()));
                         }
 
-                        l += continuation.len() as u32;
+                        l += continuation.len();
 
                         break
                     },
@@ -214,7 +214,7 @@ impl Language {
 
 // Similar to lerp (linear interpolation), but instead of finding the point based on the relative distance,
 // it finds the relative distance based on the point.
-fn inverse_lerp(left: u32, right: u32, point: u32) -> f32 {
+fn inverse_lerp(left: usize, right: usize, point: usize) -> f32 {
     assert!(left <= point);
     assert!(point <= right);
 
