@@ -4,6 +4,7 @@ use std::fs::File;
 use rand::{rngs::StdRng, SeedableRng};
 
 use word_gen::generator::generate_words;
+use word_gen::reader::rules_from_string;
 use word_gen::verification::verify_rules;
 
 fn get_rules(path: &str) -> BTreeMap<String, BTreeMap<String, u32>> {
@@ -70,6 +71,13 @@ fn verify_rules_no_avg() {
 #[should_panic]
 fn verify_rules_no_word_length() {
     verify_rules_of("test10");
+}
+
+#[test]
+fn rules_from_string_correct_values() {
+    let text = "ab ba abac acab bac";
+    let rules = get_rules("test11");
+    assert_eq!(rules_from_string(text, 3), rules);
 }
 
 #[test]
